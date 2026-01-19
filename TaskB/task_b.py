@@ -50,7 +50,7 @@ def main():
         "price": price,
         "paid": paid,
         "room": room,
-        "phone": phone,
+        "phone": phone, 
         "email": email,
     }
 
