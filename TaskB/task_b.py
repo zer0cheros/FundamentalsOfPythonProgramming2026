@@ -1,5 +1,6 @@
+from datetime import datetime
 
-_RESERVAIONS = "reservations.txt"
+_RESERVATIONS = "reservations.txt"
 
 def print_reservation_number(r):
     print(f"Reservation number: {r['id']}")
@@ -8,23 +9,24 @@ def print_booker(r):
     print(f"Booker: {r['name']}")
 
 def print_date(r):
-    print(f"Date: {r['date'].replace('-', '.')}")
+    print(f"Date: {r['date'].strftime('%d.%m.%Y')}")
 
 def print_start_time(r):
-    print(f"Start time: {r['start'].replace(':', '.')}")
+
+    print(f"Start time: {r['start'].strftime('%H.%M')}")
 
 def print_hours(r):
     print(f"Number of hours: {r['hours']}")
 
 def print_hourly_rate(r):
-    print(f"Hourly price: {r['price'].replace('.', ',')} €")
+    print(f"Hourly price: {r['price']:.2f} €".replace(".", ","))
 
 def print_total_price(r):
-    total = float(r["hours"]) * float(r["price"])
-    print(f"Total price: {str(total).replace('.', ',')} €")
+    total = r["hours"] * r["price"]
+    print(f"Total price: {total:.2f} €".replace(".", ","))
 
 def print_paid(r):
-    print(f"Paid: {'Yes' if r['paid'] == 'True' else 'No'}")
+    print(f"Paid: {'Yes' if r['paid'] else 'No'}")
 
 def print_venue(r):
     print(f"Location: {r['room']}")
@@ -35,23 +37,23 @@ def print_phone(r):
 def print_email(r):
     print(f"Email: {r['email']}")
 
-
 def main():
-    with open(_RESERVAIONS, encoding="utf-8") as r:
-        reservation, name, date, start, hours, price, paid, room, phone, email = \
-            r.read().strip().split("|")
+    with open(_RESERVATIONS, encoding="utf-8") as f:
+        reservation_id, name, date, start, hours, price, paid, room, phone, email = (
+            f.read().strip().split("|")
+        )
 
     reservation = {
-        "id": reservation,
-        "name": name,
-        "date": date,
-        "start": start,
-        "hours": hours,
-        "price": price,
-        "paid": paid,
-        "room": room,
-        "phone": phone, 
-        "email": email,
+        "id": int(reservation_id),
+        "name": name.strip(),
+        "date": datetime.strptime(date.strip(), "%Y-%m-%d").date(),
+        "start": datetime.strptime(start.strip(), "%H:%M").time(),  # convert to time
+        "hours": float(hours.strip()),
+        "price": float(price.strip()),
+        "paid": paid.strip() == "True",
+        "room": room.strip(),
+        "phone": phone.strip(),
+        "email": email.strip(),
     }
 
     printers = [
@@ -70,7 +72,6 @@ def main():
 
     for printer in printers:
         printer(reservation)
-
 
 if __name__ == "__main__":
     main()
