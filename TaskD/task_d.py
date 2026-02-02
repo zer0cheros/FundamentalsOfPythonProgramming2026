@@ -5,18 +5,22 @@ from datetime import datetime
 CVS_FIlE_PATH = './TaskD/week42.csv'
 
 # Läser in CSV
-def read_csv_file(file_path: str) -> None:
+def read_csv_file(file_path: str) -> List:
+    """Reads a CSV file and returns the rows in a suitable structure."""
+
+
     data = []
     with open(file_path, mode='r', newline='') as file:
         csv_reader = csv.reader(file, delimiter=';')
         for row in csv_reader:
             data.append(row)
-    print_data(data)
+    return data
 
 
 # Skriver ut data
 def print_data(data: List) -> None:
-    #header = data[0]
+    """Prints the electricity consumption and production data in a formatted table."""
+
     print("Week 42 electricity consumption and production")
     print("-" * 68)
     print(f"{'Date':<18} "f"{'Consumption [kWh]':<24} {'Production [kWh]':<20}")
@@ -41,13 +45,20 @@ def print_data(data: List) -> None:
 
 # Huvudfunktion
 def main() -> None:
-    read_csv_file(CVS_FIlE_PATH)
+    """main function to execute the program."""
+
+    data = read_csv_file(CVS_FIlE_PATH)
+    print_data(data)
 
 
 def to_kwh(wh: float) -> float:
+    """Converts watt-hours to kilowatt-hours."""
+
     return wh / 1000.0
 
 def format_kwh(value_kwh: float) -> str:
+    """Formats the kWh value to two decimal places with a comma as decimal separator."""
+    
     return f"{value_kwh:.2f}".replace(".", ",")
 
 
