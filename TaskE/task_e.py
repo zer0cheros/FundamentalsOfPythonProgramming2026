@@ -46,19 +46,12 @@ def weekday_fi(d: date) -> str:
 def calculate_daily_summaries(rows: List[List[str]]) -> Dict[date, Totals]:
     """
     Calculates daily totals (kWh) for consumption and production by phase.
-
-    Expects rows where:
-      col0 = ISO timestamp (e.g. 2025-10-13T00:00:00)
-      col1-3 = consumption phases v1-v3 in Wh
-      col4-6 = production phases v1-v3 in Wh
-    Returns: mapping date -> Totals(cons=(v1,v2,v3), prod=(v1,v2,v3)) in kWh.
     """
     daily_wh: Dict[date, List[float]] = {}  # [c1,c2,c3,p1,p2,p3] in Wh
 
-    for row in rows[1:]:  # skip header
+    for row in rows[1:]:  
         dt = datetime.fromisoformat(row[0])
         day = dt.date()
-
         # Parse Wh values
         c1, c2, c3 = float(row[1]), float(row[2]), float(row[3])
         p1, p2, p3 = float(row[4]), float(row[5]), float(row[6])
@@ -91,7 +84,7 @@ def format_week_section(week_number: int, daily: Dict[date, Totals]) -> str:
     lines: List[str] = []
     lines.append(f"Week {week_number} electricity consumption and production (kWh, by phase)")
     lines.append("Day          Date           Consumption [kWh]                 Production [kWh]")
-    lines.append("                          v1       v2       v3              v1       v2       v3")
+    lines.append("                                v1       v2       v3              v1       v2       v3")
     lines.append("-" * 83)
 
     for day in sorted(daily.keys()):
