@@ -1,5 +1,5 @@
 -----------------------------------------------------
-Report for the year 2025
-- Total consumption: 8741.12 kWh
-- Total production: 2922.38 kWh
-- Average temperature: 7.26 °C
+Report for April
+- Total consumption: 477.85 kWh
+- Total production: 373.8089999999998 kWh
+- Average temperature: 5.66 °C
