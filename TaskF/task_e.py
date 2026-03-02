@@ -1,165 +1,203 @@
-# Copyright (c) 2026 Christian Wiss
+# Copyright (c) 2025 Christian Wiss
 # License: MIT
 
-
 import csv
-from helpers import path, mainMenu, underHeaders, months, DATE_COL, AMOUNT_COL, PRODUCT_COL, AVERAGE_TEMP
 from datetime import datetime, date
+from typing import List, Dict, Any
+from helpers import format_date, format_number, month_name, parse_timestamp, path
+
 
 
 DATE_FMT = "%d.%m.%Y"
 
-def convert_time(time_str: str) -> datetime:
-    """Converts either dd.mm.yyyy or ISO timestamp into datetime."""
-    
-    # If string contains "T", it's ISO format from CSV
-    if "T" in time_str:
-        return datetime.fromisoformat(time_str)
-    return datetime.strptime(time_str, DATE_FMT)
 
-
-
-CSV_FILE = path / "2025.csv"
-
-def read_data(filename: str) -> list:
-    """Reads a CSV file and returns the rows in a suitable structure."""
-    with open (filename, mode="r", newline="", encoding="utf-8") as file:
+def read_data(filename: str) -> List[Dict[str, Any]]:
+    """Reads 2025.csv and returns rows with converted datatypes."""
+    rows: List[Dict[str, Any]] = []
+    with open(filename, mode="r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file, delimiter=";")
-        return list(reader)   
+        for r in reader:
+            # Adjust these keys if your CSV headers differ:
+            ts = parse_timestamp(r["Time"])
+            consumption = float(r[" Consumption (net) kWh"].replace(",", "."))
+            production = float(r[" Production (net) kWh"].replace(",", "."))
+            temp = float(r[" Daily average temperature"].replace(",", "."))
+
+            rows.append({
+                "dt": ts,
+                "day": ts.date(),
+                "consumption": consumption,
+                "production": production,
+                "temp": temp
+            })
+    return rows
+
 
 def show_main_menu() -> str:
-    """Prints the main menu and returns the user selection as a string."""
-    print("Choose a report type:")
+    """Shows the main menu and returns the user's choice."""
+    print("\nChoose a report type:")
+    print("1) Daily summary for a date range")
+    print("2) Monthly summary for one month")
+    print("3) Full year 2025 summary")
+    print("4) Exit the program")
+    return input("Select (1–4): ").strip()
+
+
+def show_next_menu() -> str:
+    """Shows the post-report menu and returns the user's choice."""
+    print("\nWhat would you like to do next?")
+    print("1) Write the report to the file report.txt")
+    print("2) Create a new report")
+    print("3) Exit")
+    return input("Select (1–3): ").strip()
+
+
+def ask_date(prompt: str) -> date:
+    """Asks the user for a date in dd.mm.yyyy format and returns a date object."""
     while True:
-        for item in mainMenu:
-            print(f"{item['id']}. {item['content']}")
-        selection = input("")
-        if(selection == "4"):
-            break
-        else:
-            for items2 in underHeaders:
-                print(f"{items2['id']}. {items2['content']}")
-            selection2 = input("")
-            if(selection == "1" and selection2 == "1"): create_daily_report(read_data(CSV_FILE))
-            if(selection == "2" and selection2 == "1"): create_monthly_report(read_data(CSV_FILE))
-            if(selection == "3" and selection2 == "1"): create_yearly_report(read_data(CSV_FILE))   
-            elif(selection2 == "2"):
-                show_main_menu()
-            elif(selection2 == "3"):
-                break
-            else:
-                print("Invalid selection, please try again.")
-
-        
+        s = input(prompt).strip()
+        try:
+            return datetime.strptime(s, DATE_FMT).date()
+        except ValueError:
+            print("Invalid date format. Use dd.mm.yyyy (e.g., 13.10.2025).")
 
 
-def create_daily_report(data: list) -> list[str]:
-    """Builds a daily report for a selected date range."""
-    print("Enter start date (dd.mm.yyyy): ")
-    selectStart = input("").strip()
-    print("Enter end date (dd.mm.yyyy): ")
-    selectEnd = input("").strip()
-    start, end  = convert_time(selectStart).date(), convert_time(selectEnd).date()
-    filtered = []
-    average, totals, production = 0.0, 0.0, 0.0
-    daysTotal = end - start
-    print(daysTotal.days + 1)
+def ask_month() -> int:
+    """Asks the user for a month number 1–12 and returns it."""
+    while True:
+        s = input("Enter month number (1–12): ").strip()
+        if s.isdigit():
+            m = int(s)
+            if 1 <= m <= 12:
+                return m
+        print("Invalid month. Enter a number from 1 to 12.")
+
+
+def create_daily_report(data: List[Dict[str, Any]]) -> List[str]:
+    """Builds a report for a selected date range (inclusive)."""
+    start = ask_date("Enter start date (dd.mm.yyyy): ")
+    end = ask_date("Enter end date (dd.mm.yyyy): ")
+
+    if end < start:
+        start, end = end, start
+
+    total_c = 0.0
+    total_p = 0.0
+    temp_sum = 0.0
+    count = 0
+
     for row in data:
-        row_date = convert_time(row[DATE_COL]).date()
-        row_amount = float(row[AMOUNT_COL].replace(",", "."))
-        row_average = float(row[AVERAGE_TEMP].replace(",", "."))
-        row_production = float(row[PRODUCT_COL].replace(",", "."))
-        if start <= row_date <= end:
-            filtered.append((row_date, row_amount, row_average))
-            average = average + row_average
-            totals = totals + row_amount
-            production = production + row_production
-    filtered.sort(key=lambda x: x[0])
-    average = (average / filtered.__len__()).__round__(2)
-    totals = totals.__round__(2)
-    report_lines = [
-        "-" * 53,
-        f"Report for the period {start}–{end}",
-        f"- Total consumption: {totals} kWh",
-        f"- Total production: {production} kWh",
-        f"- Average temperature: {average} °C",
-    ]
-    print_report_to_console(report_lines)
-    write_report_to_file(report_lines)
-    #
-                   
-   
+        if start <= row["day"] <= end:
+            total_c += row["consumption"]
+            total_p += row["production"]
+            temp_sum += row["temp"]
+            count += 1
 
-def create_monthly_report(data: list) -> list[str]:
-    """Builds a monthly summary report for a selected month."""
-    print("Enter month number (1–12): ")
-    selectMonth = input("").strip()
-    month = int(selectMonth)
-    filtered = [] 
-    average, totals, production = 0.0, 0.0, 0.0
+    avg_temp = (temp_sum / count) if count > 0 else 0.0
+
+    return [
+        "-" * 53,
+        f"Report for the period {format_date(start)}–{format_date(end)}",
+        f"- Total consumption: {format_number(total_c)} kWh",
+        f"- Total production: {format_number(total_p)} kWh",
+        f"- Average temperature: {format_number(avg_temp)} °C",
+    ]
+
+
+def create_monthly_report(data: List[Dict[str, Any]]) -> List[str]:
+    """Builds a monthly summary report for a selected month (1–12)."""
+    m = ask_month()
+
+    total_c = 0.0
+    total_p = 0.0
+    temp_sum = 0.0
+    count = 0
+
     for row in data:
-        row_date = convert_time(row[DATE_COL])
-        row_amount = float(row[AMOUNT_COL].replace(",", "."))
-        row_average = float(row[AVERAGE_TEMP].replace(",", "."))
-        row_production = float(row[PRODUCT_COL].replace(",", "."))
-        if row_date.month == month:
-            filtered.append((row_date, row_amount, row_average))
-            average = average + row_average
-            totals = totals + row_amount
-            production = production + row_production
-    filtered.sort(key=lambda x: x[0])
-    average = (average / filtered.__len__()).__round__(2)
-    totals = totals.__round__(2)
-    report_lines = [
-        "-" * 53,
-        f"Report for {months[month-1]['content']}",
-        f"- Total consumption: {totals} kWh",
-        f"- Total production: {production} kWh",
-        f"- Average temperature: {average} °C",
-    ]
-    print_report_to_console(report_lines)
-    write_report_to_file(report_lines)
+        if row["dt"].month == m:
+            total_c += row["consumption"]
+            total_p += row["production"]
+            temp_sum += row["temp"]
+            count += 1
 
-def create_yearly_report(data: list) -> list[str]:
-    """Builds a full-year summary report."""
-    filtered = []
-    average, totals, production = 0.0, 0.0, 0.0
+    avg_temp = (temp_sum / count) if count > 0 else 0.0
+
+    return [
+        "-" * 53,
+        f"Report for the month: {month_name(m)}",
+        f"- Total consumption: {format_number(total_c)} kWh",
+        f"- Total production: {format_number(total_p)} kWh",
+        f"- Average temperature: {format_number(avg_temp)} °C",
+    ]
+
+
+def create_yearly_report(data: List[Dict[str, Any]]) -> List[str]:
+    """Builds a full-year summary report for 2025."""
+    total_c = 0.0
+    total_p = 0.0
+    temp_sum = 0.0
+    count = 0
+
     for row in data:
-        row_amount = float(row[AMOUNT_COL].replace(",", "."))
-        row_average = float(row[AVERAGE_TEMP].replace(",", "."))
-        row_production = float(row[PRODUCT_COL].replace(",", "."))
-        row_date = convert_time(row[DATE_COL])
-        filtered.append((row_date, row_amount, row_average, row_production))
-        average = average + row_average
-        totals = totals + row_amount
-        production = production + row_production
-    filtered.sort(key=lambda x: x[0])
-    average = (average / filtered.__len__()).__round__(2)
-    totals = totals.__round__(2)
-    production = production.__round__(2)
-    report_lines = [
-        "-" * 53,
-        f"Report for the year 2025",
-        f"- Total consumption: {totals} kWh",
-        f"- Total production: {production} kWh",
-        f"- Average temperature: {average} °C",
-    ]
-    print_report_to_console(report_lines)
-    write_report_to_file(report_lines)
+        total_c += row["consumption"]
+        total_p += row["production"]
+        temp_sum += row["temp"]
+        count += 1
 
-def print_report_to_console(lines: list[str]) -> None:
+    avg_temp = (temp_sum / count) if count > 0 else 0.0
+
+    return [
+        "-" * 53,
+        "Report for the year: 2025",
+        f"- Total consumption: {format_number(total_c)} kWh",
+        f"- Total production: {format_number(total_p)} kWh",
+        f"- Average temperature: {format_number(avg_temp)} °C",
+    ]
+
+
+def print_report_to_console(lines: List[str]) -> None:
     """Prints report lines to the console."""
     print("\n".join(lines))
 
-def write_report_to_file(lines: list[str]) -> None:
-    """Writes report lines to the file report.txt."""
+
+def write_report_to_file(lines: List[str]) -> None:
+    """Writes report lines to report.txt (overwrites old content)."""
     with open("report.txt", mode="w", encoding="utf-8") as file:
         file.write("\n".join(lines))
-    
+
 
 def main() -> None:
     """Main function: reads data, shows menus, and controls report generation."""
-    show_main_menu()
+    data = read_data(path / "2025.csv")
+
+    while True:
+        choice = show_main_menu()
+        if choice == "4":
+            break
+
+        if choice == "1":
+            report = create_daily_report(data)
+        elif choice == "2":
+            report = create_monthly_report(data)
+        elif choice == "3":
+            report = create_yearly_report(data)
+        else:
+            print("Invalid selection. Try again.")
+            continue
+
+        print_report_to_console(report)
+
+        while True:
+            next_choice = show_next_menu()
+            if next_choice == "1":
+                write_report_to_file(report)
+                print("Report written to report.txt (overwritten).")
+            elif next_choice == "2":
+                break
+            elif next_choice == "3":
+                return
+            else:
+                print("Invalid selection. Try again.")
 
 
 if __name__ == "__main__":
